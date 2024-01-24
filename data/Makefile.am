@@ -12,7 +12,7 @@ dist_pkgdata_DATA = \
 	startwizard.xml \
 	userinterfacepositionerwizard.xml \
 	videowizard.xml \
-	vuwizard.xml \	
+	vuwizard.xml \
 	freesat.t1 \
 	freesat.t2 \
 	unicable.xml \
@@ -25,16 +25,8 @@ dist_pkgdata_DATA = \
 	otv_06180000_1000_0011.dict \
 	otv_06400000_00a9_0003.dict
 
-if HAVE_7SEGMENT
-SUBDIRS += 7segment
-endif
-
 if HAVE_TEXTLCD
 SUBDIRS += displaytext
-endif
-
-if HAVE_COLORLCD3
-SUBDIRS += display128dm
 endif
 
 if HAVE_COLORLCD2
@@ -45,12 +37,12 @@ if HAVE_COLORLCD1
 SUBDIRS += display128
 endif
 
-if HAVE_COLORLCD220
-SUBDIRS += display220
+if HAVE_COLORLCD3
+SUBDIRS += display128dm
 endif
 
-if HAVE_COLORLCD240
-SUBDIRS += display240
+if HAVE_COLORLCD220
+SUBDIRS += display220
 endif
 
 if HAVE_COLORLCD390

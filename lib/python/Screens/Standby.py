@@ -24,6 +24,7 @@ QUIT_REBOOT = 2
 QUIT_RESTART = 3
 QUIT_UPGRADE_FP = 4
 QUIT_ERROR_RESTART = 5
+QUIT_RECOVERY = 16
 QUIT_ANDROID = 12
 QUIT_MAINT = 16
 QUIT_UPGRADE_PROGRAM = 42
@@ -141,7 +142,7 @@ class Standby2(Screen):
 				self.session.nav.playService(self.prev_running_service)
 		self.session.screen["Standby"].boolean = False
 		globalActionMap.setEnabled(True)
-		self.avswitch.setInput("ENCODER")
+		self.avswitch.setInput("encoder")
 		self.leaveMute()
 		if path.exists("/usr/scripts/standby_leave.sh"):
 			Console().ePopen("/usr/scripts/standby_leave.sh")
@@ -209,6 +210,7 @@ class QuitMainloopScreen(Screen):
 			QUIT_SHUTDOWN: _("Your %s %s is shutting down") % (SystemInfo["MachineBrand"], SystemInfo["MachineName"]),
 			QUIT_REBOOT: _("Your %s %s is rebooting") % (SystemInfo["MachineBrand"], SystemInfo["MachineName"]),
 			QUIT_RESTART: _("The user interface of your %s %s is restarting") % (SystemInfo["MachineBrand"], SystemInfo["MachineName"]),
+			QUIT_RECOVERY: _("Your %s %s is rebooting into Recovery Mode") % (SystemInfo["MachineBrand"], SystemInfo["MachineName"]),
 			QUIT_ANDROID: _("Your %s %s is rebooting into Android Mode") % (SystemInfo["MachineBrand"], SystemInfo["MachineName"]),
 			QUIT_MAINT: _("Your %s %s is rebooting into Recovery Mode") % (SystemInfo["MachineBrand"], SystemInfo["MachineName"]),
 			QUIT_UPGRADE_FP: _("Your frontprocessor will be upgraded\nPlease wait until your %s %s reboots\nThis may take a few minutes") % (SystemInfo["MachineBrand"], SystemInfo["MachineName"]),
@@ -261,6 +263,7 @@ class TryQuitMainloop(MessageBox):
 				QUIT_SHUTDOWN: _("Really shutdown now?"),
 				QUIT_REBOOT: _("Really reboot now?"),
 				QUIT_RESTART: _("Really restart now?"),
+				QUIT_RECOVERY: _("Really reboot into Recovery Mode?"),
 				QUIT_ANDROID: _("Really reboot into Android Mode?"),
 				QUIT_MAINT: _("Really reboot into Recovery Mode?"),
 				QUIT_UPGRADE_FP: _("Really upgrade the frontprocessor and reboot now?"),
@@ -285,13 +288,13 @@ class TryQuitMainloop(MessageBox):
 		else:
 			if event == iRecordableService.evEnd:
 				recordings = self.session.nav.getRecordings()
-				if not recordings:  # no more recordings exist
+				if not recordings: # no more recordings exist
 					rec_time = self.session.nav.RecordTimer.getNextRecordingTime()
 					if rec_time > 0 and (rec_time - time()) < 360:
-						self.initTimeout(360)  # wait for next starting timer
+						self.initTimeout(360) # wait for next starting timer
 						self.startTimer()
 					else:
-						self.close(True)  # immediate shutdown
+						self.close(True) # immediate shutdown
 			elif event == iRecordableService.evStart:
 				self.stopTimer()
 

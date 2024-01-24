@@ -390,8 +390,8 @@ class MovieContextMenuSummary(Screen):
 class MovieContextMenu(Screen, ProtectedScreen):
 	# Contract: On OK returns a callable object (e.g. delete)
 	def __init__(self, session, csel, currentSelection):
-		Screen.__init__(self, session, mandatoryWidgets=["config"])
-		self.skinName = ["MovieContextMenu", "Setup"]
+		Screen.__init__(self, session)
+		self.skinName = "Setup"
 		self.setup_title = _("Movie List Setup")
 		Screen.setTitle(self, _(self.setup_title))
 

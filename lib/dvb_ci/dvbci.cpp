@@ -32,71 +32,6 @@ eDVBCIInterfaces *eDVBCIInterfaces::instance = 0;
 pthread_mutex_t eDVBCIInterfaces::m_pmt_handler_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 pthread_mutex_t eDVBCIInterfaces::m_slot_lock = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
-static char* readInputCI(int NimNumber)
-{
-	char id1[] = "NIM Socket";
-	char id2[] = "Input_Name";
-	char keys1[] = "1234567890";
-	char keys2[] = "12ABCDabcd";
-	char *inputName = 0;
-	char buf[256];
-	FILE *f;
-
-	f = fopen("/proc/bus/nim_sockets", "rt");
-	if (f)
-	{
-		while (fgets(buf, sizeof(buf), f))
-		{
-			char *p = strcasestr(buf, id1);
-			if (!p)
-				continue;
-
-			p += strlen(id1);
-			p += strcspn(p, keys1);
-			if (*p && strtol(p, 0, 0) == NimNumber)
-				break;
-		}
-
-		while (fgets(buf, sizeof(buf), f))
-		{
-			if (strcasestr(buf, id1))
-				break;
-
-			char *p = strcasestr(buf, id2);
-			if (!p)
-				continue;
-
-			p = strchr(p + strlen(id2), ':');
-			if (!p)
-				continue;
-
-			p++;
-			p += strcspn(p, keys2);
-			size_t len = strspn(p, keys2);
-			if (len > 0)
-			{
-				inputName = strndup(p, len);
-				break;
-			}
-		}
-
-		fclose(f);
-	}
-
-	return inputName;
-}
-
-static std::string getTunerLetterDM(int NimNumber)
-{
-	char *srcCI = readInputCI(NimNumber);
-	if (srcCI) {
-		std::string ret = std::string(srcCI);
-		free(srcCI);
-		return ret;
-	}
-	return eDVBCISlot::getTunerLetter(NimNumber);
-}
-
 eDVBCIInterfaces::eDVBCIInterfaces()
  : m_messagepump_thread(this,1, "dvbci"), m_messagepump_main(eApp,1, "dvbci"), m_runTimer(eTimer::create(this))
 {
@@ -133,11 +68,7 @@ eDVBCIInterfaces::eDVBCIInterfaces()
 	}
 
 	for (eSmartPtrList<eDVBCISlot>::iterator it(m_slots.begin()); it != m_slots.end(); ++it)
-#ifdef DREAMBOX_DUAL_TUNER
-		it->setSource(getTunerLetterDM(0));
-#else 
 		it->setSource("A");
-#endif
 
 	for (int tuner_no = 0; tuner_no < 26; ++tuner_no) // NOTE: this assumes tuners are A .. Z max.
 	{
@@ -148,11 +79,7 @@ eDVBCIInterfaces::eDVBCIInterfaces()
 		if(::access(path.str().c_str(), R_OK) < 0)
 			break;
 
-#ifdef DREAMBOX_DUAL_TUNER
-		setInputSource(tuner_no, getTunerLetterDM(tuner_no));
-#else 
 		setInputSource(tuner_no, eDVBCISlot::getTunerLetter(tuner_no));
-#endif
 	}
 
 	eDebug("[CI] done, found %d common interface slots", num_ci);
@@ -653,11 +580,7 @@ void eDVBCIInterfaces::recheckPMTHandlers()
 							if (tunernum != -1)
 							{
 								setInputSource(tunernum, ci_source.str());
-#ifdef DREAMBOX_DUAL_TUNER
-								ci_it->setSource(getTunerLetterDM(tunernum));
-#else 
 								ci_it->setSource(eDVBCISlot::getTunerLetter(tunernum));
-#endif
 							}
 							else
 							{
@@ -787,11 +710,7 @@ void eDVBCIInterfaces::removePMTHandler(eDVBServicePMTHandler *pmthandler)
 					{
 						case finish_use_tuner_a:
 						{
-#ifdef DREAMBOX_DUAL_TUNER
-							finish_source = getTunerLetterDM(0);
-#else  
 							finish_source = "A";
-#endif
 							break;
 						}
 
@@ -814,11 +733,7 @@ void eDVBCIInterfaces::removePMTHandler(eDVBServicePMTHandler *pmthandler)
 					if(finish_source == "")
 					{
 						eDebug("[CI] warning: CI streaming finish mode not set, assuming \"tuner A\"");
-#ifdef DREAMBOX_DUAL_TUNER
-							finish_source = getTunerLetterDM(0);
-#else
 						finish_source = "A";
-#endif  
 					}
 
 					slot->setSource(finish_source);
@@ -1338,8 +1253,7 @@ void eDVBCISlot::data(int what)
 
 DEFINE_REF(eDVBCISlot);
 
-eDVBCISlot::eDVBCISlot(eMainloop *context, int nr):
-	startup_timeout(eTimer::create(context))
+eDVBCISlot::eDVBCISlot(eMainloop *context, int nr)
 {
 	char configStr[255];
 	slotid = nr;
@@ -1351,15 +1265,8 @@ eDVBCISlot::eDVBCISlot(eMainloop *context, int nr):
 	state = stateDisabled;
 	snprintf(configStr, 255, "config.ci.%d.enabled", slotid);
 	bool enabled = eConfigManager::getConfigBoolValue(configStr, true);
-	int bootDelay = eConfigManager::getConfigIntValue("config.cimisc.bootDelay");
-	if (enabled) {
-		if (bootDelay) {
-			CONNECT(startup_timeout->timeout, eDVBCISlot::openDevice);
-			startup_timeout->start(1000 * bootDelay, true);
-		}
-		else
-			openDevice();
-	}
+	if (enabled)
+		openDevice();
 	else
 		/* emit */ eDVBCI_UI::getInstance()->m_messagepump.send(eDVBCIInterfaces::Message(eDVBCIInterfaces::Message::slotStateChanged, getSlotID(), 3)); // state disabled
 }

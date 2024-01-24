@@ -261,10 +261,6 @@ void gFBDC::setResolution(int xres, int yres, int bpp)
 #ifndef CONFIG_ION
 	if (gAccel::getInstance())
 		gAccel::getInstance()->releaseAccelMemorySpace();
-#else
-	gRC *grc = gRC::getInstance();
-	if (grc)
-		grc->lock();
 #endif
 	fb->SetMode(xres, yres, bpp);
 
@@ -327,10 +323,6 @@ void gFBDC::setResolution(int xres, int yres, int bpp)
 
 	m_pixmap = new gPixmap(&surface);
 
-#ifdef CONFIG_ION
-	if (grc)
-		grc->unlock();
-#endif
 }
 
 void gFBDC::saveSettings()

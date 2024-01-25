@@ -116,6 +116,7 @@ is usually caused by not marking PSignals as immutable.
 #include <lib/python/python_helpers.h>
 #include <lib/gdi/picload.h>
 #include <lib/dvb/fcc.h>
+#include <lib/gdi/accel.h>
 %}
 
 %feature("ref")   iObject "$this->AddRef(); /* eDebug(\"AddRef (%s:%d)!\", __FILE__, __LINE__); */ "
@@ -249,7 +250,6 @@ typedef long time_t;
 %include <lib/dvb/cahandler.h>
 %include <lib/dvb/fastscan.h>
 %include <lib/dvb/cablescan.h>
-%include <lib/dvb/metaparser.h>
 %include <lib/components/scan.h>
 %include <lib/components/file_eraser.h>
 %include <lib/components/tuxtxtapp.h>
@@ -269,6 +269,9 @@ typedef long time_t;
 %include <lib/gdi/picload.h>
 %include <lib/dvb/fcc.h>
 %include <lib/dvb/streamserver.h>
+%include <lib/dvb/metaparser.h>
+%include <lib/gdi/accel.h>
+
 /**************  eptr  **************/
 
 /**************  signals  **************/
@@ -452,6 +455,14 @@ PyObject *getFontFaces()
 	for (size_t i = 0; i < v.size(); i++)
 		PyList_SET_ITEM(result, i, PyUnicode_FromString(v[i].c_str()));
         return result;
+}
+%}
+
+void setACCELDebug(int);
+%{
+void setACCELDebug(int enable)
+{
+	gAccel::getInstance()->setAccelDebug(enable);
 }
 %}
 

@@ -485,6 +485,7 @@ extern void resumeInit(void);
 #ifndef HAVE_OSDANIMATION
 extern void setAnimation_current(int a);
 extern void setAnimation_speed(int speed);
+extern void setAnimation_current_listbox(int a);
 #endif
 %}
 
@@ -503,6 +504,7 @@ extern void resumeInit(void);
 #ifndef HAVE_OSDANIMATION
 extern void setAnimation_current(int a);
 extern void setAnimation_speed(int speed);
+extern void setAnimation_current_listbox(int a);
 #endif
 
 %include <lib/python/python_console.i>

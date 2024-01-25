@@ -151,10 +151,11 @@ class eTextPara: public iObject
 	void newLine(int flags);
 	void setFont(Font *font, Font *replacement_font, Font *fallback_font);
 	void calc_bbox();
+
 public:
-	eTextPara(eRect area, ePoint start=ePoint(-1, -1))
-		: current_font(0), replacement_font(0), current_face(0), replacement_face(0),
-		fallback_font(0), fallback_face(0),
+	eTextPara(eRect area, ePoint start = ePoint(-1, -1))
+		: current_font(0), replacement_font(0), fallback_font(0),
+		  current_face(0), replacement_face(0), fallback_face(0),
 		area(area), cursor(start), maximum(0, 0), left(start.x()), charCount(0), totalheight(0),
 		bboxValid(0), doTopBottomReordering(false)
 	{

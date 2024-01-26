@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import enigma
 from os import waitpid
 

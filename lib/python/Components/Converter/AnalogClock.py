@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # original code is from openmips gb Team: [OMaclock] Converter #
 # Thx to arn354 #
 from time import localtime

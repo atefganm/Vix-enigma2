@@ -57,47 +57,25 @@ public:
 
 	enum {
 		colBackground,
-		colForeground,
+		colLabelForeground,
 		colListboxBackground,
 		colListboxForeground,
-		colListboxBackgroundSelected,
-		colListboxForegroundSelected,
-		colListboxBackgroundMarked,
-		colListboxForegroundMarked,
-		colListboxBackgroundMarkedSelected,
-		colListboxForegroundMarkedSelected,
+		colListboxSelectedBackground,
+		colListboxSelectedForeground,
+		colListboxMarkedBackground,
+		colListboxMarkedForeground,
+		colListboxMarkedAndSelectedBackground,
+		colListboxMarkedAndSelectedForeground,
 
 		colWindowTitleForeground,
 		colWindowTitleBackground,
-
-		colScrollbarForeground,
-		colScrollbarBackground,
-		colScrollbarBorder,
-
-		colSliderForeground,
-		colSliderBackground,
-		colSliderBorder,
-
 		colMax
 	};
 
-	enum {
-		valueEntryLeftOffset,
-		valueHeaderLeftOffset,
-		valueMax
-	};
 	void setColor(int what, const gRGB &back);
-	gRGB getColor(int what);
 
 	void setTitleOffset(const eSize &offset);
 	void setTitleFont(gFont *fnt);
-	void setLabelFont(gFont *fnt);
-	void setListboxFont(gFont *fnt);
-	void setEntryFont(gFont *fnt);
-	void setValueFont(gFont *fnt);
-	void setHeaderFont(gFont *fnt);
-	void setValue(int what, int value);
-	int getValue(int what);
 
 private:
 	struct borderSet
@@ -112,9 +90,7 @@ private:
 	gRGB m_color[colMax];
 
 	eSize m_title_offset;
-	ePtr<gFont> m_fnt, m_labelfnt, m_listboxfnt, m_entryfnt, m_valuefnt, m_headerfnt;
-
-	int m_values[valueMax] = {15, 15};
+	ePtr<gFont> m_fnt;
 
 	void drawBorder(gPainter &painter, const eRect &size, struct borderSet &border, int where, int flags);
 };

@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <fstream>
 #include <lib/gdi/grc.h>
 #include <lib/gdi/font.h>
 #include <lib/base/init.h>
@@ -8,32 +9,36 @@
 #include <vuplus_gles.h>
 #endif
 
+
 #ifndef SYNC_PAINT
 void *gRC::thread_wrapper(void *ptr)
 {
-	return ((gRC*)ptr)->thread();
+	return ((gRC *)ptr)->thread();
 }
 #endif
 
-gRC *gRC::instance=0;
+gRC *gRC::instance = 0;
 
-gRC::gRC(): rp(0), wp(0)
+gRC::gRC() : rp(0), wp(0)
 #ifdef SYNC_PAINT
-,m_notify_pump(eApp, 0, "gRC")
+			 ,
+			 m_notify_pump(eApp, 0, "gRC")
 #else
-,m_notify_pump(eApp, 1, "gRC")
+			 ,
+			 m_notify_pump(eApp, 1, "gRC")
 #endif
-,m_spinner_enabled(0), m_spinneronoff(1), m_prev_idle_count(0)
+			 ,
+			 m_spinner_enabled(0), m_spinneronoff(1), m_prev_idle_count(0) // NOSONAR
 {
 	ASSERT(!instance);
-	instance=this;
+	instance = this;
 	CONNECT(m_notify_pump.recv_msg, gRC::recv_notify);
 #ifndef SYNC_PAINT
 	pthread_mutex_init(&mutex, 0);
 	pthread_cond_init(&cond, 0);
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
-	if (pthread_attr_setstacksize(&attr, 2048*1024) != 0)
+	if (pthread_attr_setstacksize(&attr, 2048 * 1024) != 0)
 		eDebug("[gRC] Error: pthread_attr_setstacksize failed!");
 	int res = pthread_create(&the_thread, &attr, thread_wrapper, this);
 	pthread_attr_destroy(&attr);
@@ -64,10 +69,9 @@ DEFINE_REF(gRC);
 
 gRC::~gRC()
 {
-	instance=0;
-
+	instance = 0;
 	gOpcode o;
-	o.opcode=gOpcode::shutdown;
+	o.opcode = gOpcode::shutdown;
 	submit(o);
 #ifndef SYNC_PAINT
 	eDebug("[gRC] Waiting for gRC thread shutdown.");
@@ -78,34 +82,34 @@ gRC::~gRC()
 
 void gRC::submit(const gOpcode &o)
 {
-	while(1)
+	while (1)
 	{
 #ifndef SYNC_PAINT
 		pthread_mutex_lock(&mutex);
 #endif
-		int tmp=wp+1;
-		if ( tmp == MAXSIZE )
-			tmp=0;
-		if ( tmp == rp )
+		int tmp = wp + 1;
+		if (tmp == MAXSIZE)
+			tmp = 0;
+		if (tmp == rp)
 		{
 #ifndef SYNC_PAINT
-			pthread_cond_signal(&cond);  // wakeup gdi thread
+			pthread_cond_signal(&cond); // wakeup gdi thread
 			pthread_mutex_unlock(&mutex);
 #else
 			thread();
 #endif
-			//eDebug("[gRC] Render buffer full.");
-			//fflush(stdout);
-			usleep(1000);  // wait 1 msec
+			// eDebug("[gRC] Render buffer full.");
+			// fflush(stdout);
+			usleep(1000); // wait 1 msec
 			continue;
 		}
-		int free=rp-wp;
-		if ( free <= 0 )
-			free+=MAXSIZE;
-		queue[wp++]=o;
-		if ( wp == MAXSIZE )
+		int free = rp - wp;
+		if (free <= 0)
+			free += MAXSIZE;
+		queue[wp++] = o;
+		if (wp == MAXSIZE)
 			wp = 0;
-		if (o.opcode==gOpcode::flush||o.opcode==gOpcode::shutdown||o.opcode==gOpcode::notify)
+		if (o.opcode == gOpcode::flush || o.opcode == gOpcode::shutdown || o.opcode == gOpcode::notify)
 #ifndef SYNC_PAINT
 			pthread_cond_signal(&cond);  // wakeup gdi thread
 		pthread_mutex_unlock(&mutex);
@@ -342,6 +346,47 @@ void gPainter::setForegroundColor(const gRGB &color)
 	m_rc->submit(o);
 }
 
+void gPainter::setGradient(const std::vector<gRGB> &colors, uint8_t orientation, bool alphablend, int fullSize)
+{
+	if (m_dc->islocked())
+		return;
+	gOpcode o;
+	o.opcode = gOpcode::setGradient;
+	o.dc = m_dc.grabRef();
+	o.parm.gradient = new gOpcode::para::pgradient;
+	o.parm.gradient->colors = colors;
+	o.parm.gradient->orientation = orientation;
+	o.parm.gradient->alphablend = alphablend;
+	o.parm.gradient->fullSize = fullSize;
+	m_rc->submit(o);
+}
+
+void gPainter::setRadius(int radius, uint8_t edges)
+{
+	if (m_dc->islocked())
+		return;
+	gOpcode o;
+	o.opcode = gOpcode::setRadius;
+	o.dc = m_dc.grabRef();
+	o.parm.radius = new gOpcode::para::pradius;
+	o.parm.radius->radius = radius;
+	o.parm.radius->edges = edges;
+	m_rc->submit(o);
+}
+
+void gPainter::setBorder(const gRGB &borderColor, int width)
+{
+	if (m_dc->islocked())
+		return;
+	gOpcode o;
+	o.opcode = gOpcode::setBorder;
+	o.dc = m_dc.grabRef();
+	o.parm.border = new gOpcode::para::pborder;
+	o.parm.border->color = borderColor;
+	o.parm.border->width = width;
+	m_rc->submit(o);
+}
+
 void gPainter::setFont(gFont *font)
 {
 	if ( m_dc->islocked() )
@@ -457,6 +502,17 @@ void gPainter::blit(gPixmap *pixmap, const eRect &pos, const eRect &clip, int fl
 	o.parm.blit->clip = clip;
 	o.parm.blit->flags = flags;
 	o.parm.blit->position = pos;
+	m_rc->submit(o);
+}
+
+void gPainter::drawRectangle(const eRect &area) {
+	if ( m_dc->islocked() )
+		return;
+	gOpcode o;
+	o.opcode=gOpcode::rectangle;
+	o.dc = m_dc.grabRef();
+	o.parm.rectangle = new gOpcode::para::prectangle;
+	o.parm.rectangle->area = area;
 	m_rc->submit(o);
 }
 
@@ -711,6 +767,12 @@ void gPainter::setView(eSize size)
 gDC::gDC()
 {
 	m_spinner_pic = 0;
+	m_border_width = 0;
+	m_radius = 0;
+	m_radius_edges = 0;
+	m_gradient_orientation = 0;
+	m_gradient_alphablend = false;
+	m_gradient_fullSize = 0;
 }
 
 gDC::gDC(gPixmap *pixmap): m_pixmap(pixmap)
@@ -754,6 +816,23 @@ void gDC::exec(const gOpcode *o)
 		o->parm.setFont->font->Release();
 		delete o->parm.setFont;
 		break;
+	case gOpcode::setGradient:
+		m_gradient_colors = o->parm.gradient->colors;
+		m_gradient_orientation = o->parm.gradient->orientation;
+		m_gradient_alphablend = o->parm.gradient->alphablend;
+		m_gradient_fullSize = o->parm.gradient->fullSize;
+		delete o->parm.gradient;
+		break;
+	case gOpcode::setRadius:
+		m_radius = o->parm.radius->radius;
+		m_radius_edges = o->parm.radius->edges;
+		delete o->parm.radius;
+		break;
+	case gOpcode::setBorder:
+		m_border_color = o->parm.border->color;
+		m_border_width = o->parm.border->width;
+		delete o->parm.border;
+		break;
 	case gOpcode::renderText:
 	{
 		ePtr<eTextPara> para = new eTextPara(o->parm.renderText->area);
@@ -765,7 +844,36 @@ void gDC::exec(const gOpcode *o)
 			border = 0;
 		ASSERT(m_current_font);
 		para->setFont(m_current_font);
-		para->renderString(o->parm.renderText->text, (flags & gPainter::RT_WRAP) ? RS_WRAP : 0, border, markedpos);
+
+		if (flags & gPainter::RT_ELLIPSIS)
+		{
+			if (flags & gPainter::RT_WRAP) // Remove wrap
+				flags -= gPainter::RT_WRAP;
+			std::string text = o->parm.renderText->text;
+			text += u8"…";
+
+			eTextPara testpara(o->parm.renderText->area);
+			testpara.setFont(m_current_font);
+			testpara.renderString(text.c_str(), 0);
+			int bw = testpara.getBoundBox().width();
+			int w = o->parm.renderText->area.width();
+			if (bw > w) // Available space not fit
+			{
+				float pers = (float)w / (float)bw;
+				text = o->parm.renderText->text;
+				int ns = text.size() * pers;
+				if ((int)text.size() > ns)
+				{
+					text.resize(ns);
+					text += u8"…";
+				}
+				if (o->parm.renderText->text)
+					free(o->parm.renderText->text);
+				o->parm.renderText->text = strdup(text.c_str());
+			}
+		}
+		para->renderString(o->parm.renderText->text, (flags & gPainter::RT_WRAP) ? RS_WRAP : 0, o->parm.renderText->border);
+
 		if (o->parm.renderText->text)
 			free(o->parm.renderText->text);
 		if (o->parm.renderText->offset)
@@ -921,12 +1029,30 @@ void gDC::exec(const gOpcode *o)
 		{
 			o->parm.blit->clip.moveBy(m_current_offset);
 			clip.intersect(gRegion(o->parm.blit->clip), m_current_clip);
-		} else
+		}
+		else
 			clip = m_current_clip;
-
-		m_pixmap->blit(*o->parm.blit->pixmap, o->parm.blit->position, clip, o->parm.blit->flags);
+		 if (!o->parm.blit->pixmap->surface->transparent)
+		 	o->parm.blit->flags &=~(gPixmap::blitAlphaTest|gPixmap::blitAlphaBlend);
+		m_pixmap->blit(*o->parm.blit->pixmap, o->parm.blit->position, clip, m_radius, m_radius_edges, o->parm.blit->flags);
+		m_radius = 0;
+		m_radius_edges = 0;
 		o->parm.blit->pixmap->Release();
 		delete o->parm.blit;
+		break;
+	}
+	case gOpcode::rectangle:
+	{
+		o->parm.rectangle->area.moveBy(m_current_offset);
+		gRegion clip = m_current_clip & o->parm.rectangle->area;
+		m_pixmap->drawRectangle(clip, o->parm.rectangle->area, m_background_color_rgb, m_border_color, m_border_width, m_gradient_colors, m_gradient_orientation, m_radius, m_radius_edges, m_gradient_alphablend, m_gradient_fullSize);
+		m_border_width = 0;
+		m_radius = 0;
+		m_radius_edges = 0;
+		m_gradient_orientation = 0;
+		m_gradient_fullSize = 0;
+		m_gradient_alphablend = false;
+		delete o->parm.rectangle;
 		break;
 	}
 	case gOpcode::setPalette:

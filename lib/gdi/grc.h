@@ -99,6 +99,9 @@ struct gOpcode
 			int flags;
 			int border;
 			gRGB bordercolor;
+			int markedpos;
+			int scrollpos;
+			int *offset;
 		} *renderText;
 
 		struct prenderPara

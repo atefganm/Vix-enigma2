@@ -93,6 +93,9 @@ struct gOpcode
 			int flags;
 			int border;
 			gRGB bordercolor;
+			int markedpos;
+			int scrollpos;
+			int *offset;
 		} *renderText;
 
 		struct prenderPara
@@ -223,7 +226,11 @@ public:
 	void unlock();
 #endif
 
+#if SIGCXX_MAJOR_VERSION == 3
 	sigc::signal<void()> notify;
+#else
+	sigc::signal0<void> notify;
+#endif
 
 	void setSpinnerDC(gDC *dc) { m_spinner_dc = dc; }
 	void setSpinnerOnOff(int onoff) { m_spinneronoff = onoff; }
@@ -268,7 +275,7 @@ public:
 
 		RT_WRAP = 64
 	};
-	void renderText(const eRect &position, const std::string &string, int flags=0, gRGB bordercolor=gRGB(), int border=0);
+	void renderText(const eRect &position, const std::string &string, int flags=0, gRGB bordercolor=gRGB(), int border=0, int markedpos=-1, int *offset=0);
 
 	void renderPara(eTextPara *para, ePoint offset=ePoint(0, 0));
 

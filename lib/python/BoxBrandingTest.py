@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import print_function
 import boxbranding
 print("getMachineBuild=%s<" % boxbranding.getMachineBuild())

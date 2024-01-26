@@ -1,73 +1,76 @@
+# -*- coding: utf-8 -*-
 from enigma import RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont
+
+from skin import fonts, parameters, parseVerticalAlignment
 from Components.MenuList import MenuList
 from Components.MultiContent import MultiContentEntryText
-from Tools.Directories import fileExists, SCOPE_CURRENT_SKIN, resolveFilename
+from Tools.Directories import SCOPE_GUISKIN, resolveFilename
 from Tools.LoadPixmap import LoadPixmap
-from skin import applySkinFactor, fonts, parameters
-
-
-def row_delta_y():
-	font = fonts["ChoiceList"]
-	return (int(font[2]) - int(font[1])) / 2
 
 
 def ChoiceEntryComponent(key=None, text=None):
-	if text is None:
-		text = ["--"]
+	verticalAlignment = parseVerticalAlignment(parameters.get("ChoicelistVerticalAlignment", "top")) << 4  # This is a hack until other images fix their code.
+	text = ["--"] if text is None else text
 	res = [text]
 	if text[0] == "--":
-		# Do we want graphical separator (solid line with color) or dashed line
+		# Get are we want graphical separator (solid line with color) or dashed line
 		isUseGraphicalSeparator = parameters.get("ChoicelistUseGraphicalSeparator", 0)
-		x, y, w, h = parameters.get("ChoicelistDash", applySkinFactor(0, 2, 1280, 25))
+		x, y, w, h = parameters.get("ChoicelistDash", (0, 0, 1280, 25))
 		if isUseGraphicalSeparator:
 			bk_color = parameters.get("ChoicelistSeparatorColor", "0x00555556")
-			res.append(
-				MultiContentEntryText(
-					pos=(x, y + 20),
-					size=(w, 2),
-					font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER,
-					text="",
-					color=None, color_sel=None,
-					backcolor=bk_color, backcolor_sel=bk_color))
+			res.append(MultiContentEntryText(
+						pos=(x, y + 20),
+						size=(w, 2),
+						font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER,
+						text="",
+						color=None, color_sel=None,
+						backcolor=bk_color, backcolor_sel=bk_color))
 		else:
-			res.append((eListboxPythonMultiContent.TYPE_TEXT, x, y, w, h, 0, RT_HALIGN_LEFT, "-" * 200))
+			res.append((eListboxPythonMultiContent.TYPE_TEXT, x, y, w, h, 0, RT_HALIGN_LEFT | verticalAlignment, "\u2014" * 200))
 	else:
-		x, y, w, h = parameters.get("ChoicelistName", applySkinFactor(45, 2, 1280, 25))
-		res.append((eListboxPythonMultiContent.TYPE_TEXT, x, y, w, h, 0, RT_HALIGN_LEFT, text[0]))
 		if key:
+			x, y, w, h = parameters.get("ChoicelistName", (45, 0, 1235, 25))
+			res.append((eListboxPythonMultiContent.TYPE_TEXT, x, y, w, h, 0, RT_HALIGN_LEFT | verticalAlignment, text[0]))
 			# separate the sizes definition for keybutton is=cons and the rest so there to be possibility to use different size images for different type icons
 			iconKeyConfigName = "ChoicelistIcon"
-			if key == "expandable":
-				pngfile = resolveFilename(SCOPE_CURRENT_SKIN, "icons/expandable.png")
+			if key in ("dummy", "none"):
+				png = None
+			elif key == "expandable":
+				png = LoadPixmap(resolveFilename(SCOPE_GUISKIN, "icons/expandable.png"))
 			elif key == "expanded":
-				pngfile = resolveFilename(SCOPE_CURRENT_SKIN, "icons/expanded.png")
+				png = LoadPixmap(resolveFilename(SCOPE_GUISKIN, "icons/expanded.png"))
 			elif key == "verticalline":
-				pngfile = resolveFilename(SCOPE_CURRENT_SKIN, "icons/verticalline.png")
+				png = LoadPixmap(resolveFilename(SCOPE_GUISKIN, "icons/verticalline.png"))
 			elif key == "bullet":
-				pngfile = resolveFilename(SCOPE_CURRENT_SKIN, "icons/bullet.png")
+				png = LoadPixmap(resolveFilename(SCOPE_GUISKIN, "icons/bullet.png"))
 			else:
 				iconKeyConfigName = "ChoicelistButtonIcon"
-				pngfile = resolveFilename(SCOPE_CURRENT_SKIN, "buttons/key_%s.png" % key)
-			if fileExists(pngfile):
-				png = LoadPixmap(pngfile)
-				x, y, w, h = parameters.get(iconKeyConfigName, (applySkinFactor(5), applySkinFactor(0), png.size().width(), png.size().height()))
+				png = LoadPixmap(resolveFilename(SCOPE_GUISKIN, "buttons/key_%s.png" % key))
+			if png:
+				x, y, w, h = parameters.get(iconKeyConfigName, (5, 0, 35, 25))
+				if key == "verticalline" and "ChoicelistIconVerticalline" in parameters:
+					x, y, w, h = parameters.get("ChoicelistIconVerticalline", (5, 0, 35, 25))
+				if key == "expanded" and "ChoicelistIconExpanded" in parameters:
+					x, y, w, h = parameters.get("ChoicelistIconExpanded", (5, 0, 35, 25))
 				res.append((eListboxPythonMultiContent.TYPE_PIXMAP_ALPHABLEND, x, y, w, h, png))
+		else:
+			x, y, w, h = parameters.get("ChoicelistNameSingle", (5, 0, 1275, 25))
+			res.append((eListboxPythonMultiContent.TYPE_TEXT, x, y, w, h, 0, RT_HALIGN_LEFT | verticalAlignment, text[0]))
 	return res
 
 
 class ChoiceList(MenuList):
 	def __init__(self, list, selection=0, enableWrapAround=False):
 		MenuList.__init__(self, list, enableWrapAround, eListboxPythonMultiContent)
-		font = fonts.get("ChoiceList", applySkinFactor("Regular", 20, 25))
+		font = fonts.get("ChoiceList", ("Regular", 20, 30))
 		self.l.setFont(0, gFont(font[0], font[1]))
 		self.l.setItemHeight(font[2])
-		self.ItemHeight = font[2]
+		self.itemHeight = font[2]
 		self.selection = selection
 
 	def postWidgetCreate(self, instance):
 		MenuList.postWidgetCreate(self, instance)
 		self.moveToIndex(self.selection)
-		self.instance.setWrapAround(True)
 
 	def getItemHeight(self):
-		return self.ItemHeight
+		return self.itemHeight

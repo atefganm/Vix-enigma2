@@ -3,6 +3,7 @@
 #include <lib/gdi/font.h>
 #include <lib/base/init.h>
 #include <lib/base/init_num.h>
+#include <lib/base/nconfig.h>
 #ifdef USE_LIBVUGLES2
 #include <vuplus_gles.h>
 #endif
@@ -22,6 +23,7 @@ gRC::gRC(): rp(0), wp(0)
 #else
 ,m_notify_pump(eApp, 1, "gRC")
 #endif
+,m_spinner_enabled(0), m_spinneronoff(1), m_prev_idle_count(0)
 {
 	ASSERT(!instance);
 	instance=this;
@@ -32,16 +34,14 @@ gRC::gRC(): rp(0), wp(0)
 	pthread_attr_t attr;
 	pthread_attr_init(&attr);
 	if (pthread_attr_setstacksize(&attr, 2048*1024) != 0)
-		eDebug("[gRC] pthread_attr_setstacksize failed");
+		eDebug("[gRC] Error: pthread_attr_setstacksize failed!");
 	int res = pthread_create(&the_thread, &attr, thread_wrapper, this);
 	pthread_attr_destroy(&attr);
 	if (res)
-		eFatal("[gRC] thread couldn't be created");
+		eFatal("[gRC] Error: Thread couldn't be created!");
 	else
-		eDebug("[gRC] thread created successfully");
+		eDebug("[gRC] Thread created successfully.");
 #endif
-	m_spinner_enabled = 0;
-	m_spinneronoff = 1;
 }
 
 #ifdef CONFIG_ION
@@ -70,9 +70,9 @@ gRC::~gRC()
 	o.opcode=gOpcode::shutdown;
 	submit(o);
 #ifndef SYNC_PAINT
-	eDebug("[gRC] waiting for gRC thread shutdown");
+	eDebug("[gRC] Waiting for gRC thread shutdown.");
 	pthread_join(the_thread, 0);
-	eDebug("[gRC] thread has finished");
+	eDebug("[gRC] Thread has finished.");
 #endif
 }
 
@@ -94,7 +94,7 @@ void gRC::submit(const gOpcode &o)
 #else
 			thread();
 #endif
-			//eDebug("[gRC] render buffer full...");
+			//eDebug("[gRC] Render buffer full.");
 			//fflush(stdout);
 			usleep(1000);  // wait 1 msec
 			continue;
@@ -240,7 +240,7 @@ void gRC::enableSpinner()
 {
 	if (!m_spinner_dc)
 	{
-		eDebug("[gRC] enabelSpinner: no spinner DC!");
+		eDebug("[gRC] enableSpinner Error: No spinner DC!");
 		return;
 	}
 
@@ -262,7 +262,7 @@ void gRC::disableSpinner()
 
 	if (!m_spinner_dc)
 	{
-		eDebug("[gRC] disableSpinner: no spinner DC!");
+		eDebug("[gRC] disableSpinner Error: No spinner DC!");
 		return;
 	}
 
@@ -356,7 +356,7 @@ void gPainter::setFont(gFont *font)
 	m_rc->submit(o);
 }
 
-void gPainter::renderText(const eRect &pos, const std::string &string, int flags, gRGB bordercolor, int border)
+void gPainter::renderText(const eRect &pos, const std::string &string, int flags, gRGB bordercolor, int border, int markedpos, int *offset)
 {
 	if (string.empty()) return;
 	if ( m_dc->islocked() )
@@ -370,6 +370,10 @@ void gPainter::renderText(const eRect &pos, const std::string &string, int flags
 	o.parm.renderText->flags = flags;
 	o.parm.renderText->border = border;
 	o.parm.renderText->bordercolor = bordercolor;
+	o.parm.renderText->markedpos = markedpos;
+	o.parm.renderText->offset = offset;
+	if (markedpos >= 0)
+		o.parm.renderText->scrollpos = eConfigManager::getConfigIntValue("config.usage.cursorscroll");
 	m_rc->submit(o);
 }
 
@@ -754,21 +758,30 @@ void gDC::exec(const gOpcode *o)
 	{
 		ePtr<eTextPara> para = new eTextPara(o->parm.renderText->area);
 		int flags = o->parm.renderText->flags;
+		int border = o->parm.renderText->border;
+		int markedpos = o->parm.renderText->markedpos;
+		int scrollpos = o->parm.renderText->scrollpos;
+		if (markedpos != -1)
+			border = 0;
 		ASSERT(m_current_font);
 		para->setFont(m_current_font);
-		para->renderString(o->parm.renderText->text, (flags & gPainter::RT_WRAP) ? RS_WRAP : 0, o->parm.renderText->border);
+		para->renderString(o->parm.renderText->text, (flags & gPainter::RT_WRAP) ? RS_WRAP : 0, border, markedpos);
 		if (o->parm.renderText->text)
 			free(o->parm.renderText->text);
+		if (o->parm.renderText->offset)
+			para->setTextOffset(*o->parm.renderText->offset);
 		if (flags & gPainter::RT_HALIGN_LEFT)
-			para->realign(eTextPara::dirLeft);
+			para->realign(eTextPara::dirLeft, markedpos, scrollpos);
 		else if (flags & gPainter::RT_HALIGN_RIGHT)
-			para->realign(eTextPara::dirRight);
+			para->realign(eTextPara::dirRight, markedpos, scrollpos);
 		else if (flags & gPainter::RT_HALIGN_CENTER)
-			para->realign((flags & gPainter::RT_WRAP) ? eTextPara::dirCenter : eTextPara::dirCenterIfFits);
+			para->realign((flags & gPainter::RT_WRAP) ? eTextPara::dirCenter : eTextPara::dirCenterIfFits, markedpos, scrollpos);
 		else if (flags & gPainter::RT_HALIGN_BLOCK)
-			para->realign(eTextPara::dirBlock);
+			para->realign(eTextPara::dirBlock, markedpos, scrollpos);
 		else
-			para->realign(eTextPara::dirBidi);
+			para->realign(eTextPara::dirBidi, markedpos, scrollpos);
+		if (o->parm.renderText->offset)
+			*o->parm.renderText->offset = para->getTextOffset();
 
 		ePoint offset = m_current_offset;
 
@@ -778,7 +791,7 @@ void gDC::exec(const gOpcode *o)
 			int vcentered_top = o->parm.renderText->area.top() + ((o->parm.renderText->area.height() - bbox.height()) / 2);
 			int correction = vcentered_top - bbox.top();
 			// Only center if it fits, don't push text out the top
-			if (correction > 0)
+			if ((correction > 0) || (para->getLineCount() == 1))
 			{
 				offset += ePoint(0, correction);
 			}
@@ -789,7 +802,66 @@ void gDC::exec(const gOpcode *o)
 			int correction = o->parm.renderText->area.height() - bbox.height() - 2;
 			offset += ePoint(0, correction);
 		}
-		if (o->parm.renderText->border)
+		if (markedpos != -1)
+		{
+			int glyphs = para->size();
+			int left, width = 0;
+			int top = o->parm.renderText->area.top();
+			int height = fontRenderClass::getInstance()->getLineHeight(*m_current_font);
+			eRect bbox;
+			if (markedpos == -2)
+			{
+				if (glyphs > 0)
+				{
+					// FIXME: Mark each line of text, not the whole rectangle.
+					// (Currently no multiline text is all marked.)
+					bbox = para->getBoundBox();
+					left = bbox.left();
+					width = bbox.width();
+					if (height < bbox.height())
+						height = bbox.height();
+				}
+			}
+			else if (markedpos >= 0 && markedpos < glyphs)
+			{
+				bbox = para->getGlyphBBox(markedpos);
+				left = bbox.left();
+				width = bbox.width();
+				int btop = bbox.top();
+				while (top + height <= btop)
+					top += height;
+			}
+			else if (markedpos > 0xFFFF)
+			{
+				int markedlen = markedpos >> 16;
+				markedpos &= 0xFFFF;
+				int markedlast = markedpos + markedlen - 1;
+				if (markedlast < glyphs)
+				{
+					bbox = para->getGlyphBBox(markedpos);
+					eRect bbox1 = para->getGlyphBBox(markedlast);
+					left = bbox.left();
+					// Assume the mark is on the one line.
+					width = bbox1.right() - left;
+					int btop = bbox.top();
+					while (top + height <= btop)
+						top += height;
+				}
+			}
+			if (width)
+			{
+				bbox = eRect(left, top, width, height);
+				bbox.moveBy(offset);
+				eRect area = o->parm.renderText->area;
+				area.moveBy(offset);
+				gRegion clip = m_current_clip & bbox & area;
+				if (m_pixmap->needClut())
+					m_pixmap->fill(clip, m_foreground_color);
+				else
+					m_pixmap->fill(clip, m_foreground_color_rgb);
+			}
+		}
+		if (border)
 		{
 			para->blit(*this, offset, m_background_color_rgb, o->parm.renderText->bordercolor, true);
 			para->blit(*this, offset, o->parm.renderText->bordercolor, m_foreground_color_rgb);
@@ -937,7 +1009,7 @@ void gDC::exec(const gOpcode *o)
 		incrementSpinner();
 		break;
 	default:
-		eFatal("[gDC] illegal opcode %d. expect memory leak!", o->opcode);
+		eFatal("[gRC] gDC Error: Illegal opcode %d, expect memory leak!", o->opcode);
 	}
 }
 
@@ -947,7 +1019,7 @@ gRGB gDC::getRGB(gColor col)
 		return gRGB(col, col, col);
 	if (col<0)
 	{
-		eFatal("[gDC] getRGB transp");
+		eFatal("[gRC] gDC Error: getRGB transp!");
 		return gRGB(0, 0, 0, 0xFF);
 	}
 	return m_pixmap->surface->clut.data[col];

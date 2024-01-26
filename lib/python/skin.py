@@ -356,73 +356,6 @@ def parseColor(s):
 	return gRGB(int(s[1:], 0x10))
 
 
-def parseScale(value):
-	options = {
-		"none": 0,
-		"0": 0,  # Legacy scale option.
-		"scale": BT_SCALE,
-		"1": BT_SCALE,  # Legacy scale option.
-		"keepAspect": BT_SCALE | BT_KEEP_ASPECT_RATIO,
-		"leftTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_TOP,
-		"leftCenter": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_CENTER,
-		"leftMiddle": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_CENTER,
-		"leftBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_BOTTOM,
-		"centerTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_TOP,
-		"middleTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_TOP,
-		"centerScaled": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_CENTER,
-		"middleScaled": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_CENTER,
-		"centerBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_BOTTOM,
-		"middleBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_BOTTOM,
-		"rightTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_TOP,
-		"rightCenter": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_CENTER,
-		"rightMiddle": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_CENTER,
-		"rightBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_BOTTOM,
-		#
-		# Deprecated scaling names.
-		"scaleKeepAspect": BT_SCALE | BT_KEEP_ASPECT_RATIO,
-		"scaleLeftTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_TOP,
-		"scaleLeftCenter": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_CENTER,
-		"scaleLeftMiddle": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_CENTER,
-		"scaleLeftBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_LEFT | BT_VALIGN_BOTTOM,
-		"scaleCenterTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_TOP,
-		"scaleMiddleTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_TOP,
-		"scaleCenter": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_CENTER,
-		"scaleMiddle": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_CENTER,
-		"scaleCenterBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_BOTTOM,
-		"scaleMiddleBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_CENTER | BT_VALIGN_BOTTOM,
-		"scaleRightTop": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_TOP,
-		"scaleRightCenter": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_CENTER,
-		"scaleRightMiddle": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_CENTER,
-		"scaleRightBottom": BT_SCALE | BT_KEEP_ASPECT_RATIO | BT_HALIGN_RIGHT | BT_VALIGN_BOTTOM,
-		#
-		"moveLeftTop": BT_HALIGN_LEFT | BT_VALIGN_TOP,
-		"moveLeftCenter": BT_HALIGN_LEFT | BT_VALIGN_CENTER,
-		"moveLeftMiddle": BT_HALIGN_LEFT | BT_VALIGN_CENTER,
-		"moveLeftBottom": BT_HALIGN_LEFT | BT_VALIGN_BOTTOM,
-		"moveCenterTop": BT_HALIGN_CENTER | BT_VALIGN_TOP,
-		"moveMiddleTop": BT_HALIGN_CENTER | BT_VALIGN_TOP,
-		"moveCenter": BT_HALIGN_CENTER | BT_VALIGN_CENTER,
-		"moveMiddle": BT_HALIGN_CENTER | BT_VALIGN_CENTER,
-		"moveCenterBottom": BT_HALIGN_CENTER | BT_VALIGN_BOTTOM,
-		"moveMiddleBottom": BT_HALIGN_CENTER | BT_VALIGN_BOTTOM,
-		"moveRightTop": BT_HALIGN_RIGHT | BT_VALIGN_TOP,
-		"moveRightCenter": BT_HALIGN_RIGHT | BT_VALIGN_CENTER,
-		"moveRightMiddle": BT_HALIGN_RIGHT | BT_VALIGN_CENTER,
-		"moveRightBottom": BT_HALIGN_RIGHT | BT_VALIGN_BOTTOM,
-		#
-		# For compatibility with DreamOS and VTi skins:
-		"off": 0,  # Do not scale.
-		"on": BT_SCALE | BT_KEEP_ASPECT_RATIO,  # Scale but keep aspect ratio.
-		"aspect": BT_SCALE | BT_KEEP_ASPECT_RATIO,  # Scale but keep aspect ratio.
-		"center": BT_HALIGN_CENTER | BT_VALIGN_CENTER,  # Do not scale but center on target.
-		"width": BT_SCALE | BT_VALIGN_CENTER,  # Adjust the width to the target, the height can be too big or too small.
-		"height": BT_SCALE | BT_HALIGN_CENTER,  # Adjust height to target, width can be too big or too small.
-		"stretch": BT_SCALE,  # Adjust height and width to the target, aspect may break.
-		"fill": BT_SCALE | BT_HALIGN_CENTER | BT_VALIGN_CENTER  # Scaled so large that the target is completely filled, may be too wide OR too high, "width" or "height" is only automatically selected depending on which side is "too small".
-	}
-	return parseOptions(options, "scale", value, 0)
-
-
 def parseParameter(s):
 	"""This function is responsible for parsing parameters in the skin, it can parse integers, floats, hex colors, hex integers, named colors, fonts and strings."""
 	if s[0] == "*":  # String.
@@ -468,19 +401,6 @@ def parseScrollbarMode(s):
 		}[s]
 	except KeyError:
 		print("[Skin] Error: Invalid scrollbarMode '%s'!  Must be one of 'showOnDemand', 'showAlways', 'showNever' or 'showLeft'." % s)
-
-
-def parseWrap(value):
-	options = {
-		"noWrap": 0,
-		"off": 0,
-		"0": 0,
-		"wrap": 1,
-		"on": 1,
-		"1": 1,
-		"ellipsis": 2
-	}
-	return parseOptions(options, "wrap", value, 0)
 
 
 def loadPixmap(path, desktop, width=0, height=0):
@@ -822,14 +742,8 @@ class AttributeParser:
 		self.guiObject.setShadowOffset(parsePosition(value, self.scaleTuple))
 
 	def noWrap(self, value):
-		self.wrap("0" if parseBoolean("noWrap", value) else "1")
-		# attribDeprecationWarning("noWrap", "wrap")
-
-	def scaleFlags(self, value):  # This is a temporary patch until the code and skins using this attribute is updated.
-		self.scale(value)
-
-	def wrap(self, value):
-		self.guiObject.setWrap(parseWrap(value))
+		value = 1 if value.lower() in ("1", "enabled", "nowrap", "on", "true", "yes") else 0
+		self.guiObject.setNoWrap(value)
 
 	def split(self, value):
 		pass

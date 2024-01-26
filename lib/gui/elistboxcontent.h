@@ -68,7 +68,6 @@ public:
 	void setSlider(int height, int space) { m_slider_height = height; m_slider_space = space; }
 private:
 	int m_seperation, m_slider_height, m_slider_space;
-	std::map<int, int> m_text_offset;
 };
 
 class eListboxPythonMultiContent: public eListboxPythonStringContent
@@ -111,7 +110,6 @@ private:
 #define RT_VALIGN_CENTER 16
 #define RT_VALIGN_BOTTOM 32
 #define RT_WRAP 64
-#define RT_ELLIPSIS 128
 #define BT_ALPHATEST 1
 #define BT_ALPHABLEND 2
 #define BT_SCALE 4

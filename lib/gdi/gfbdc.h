@@ -40,4 +40,5 @@ public:
 void setAnimation_current(int a);
 void setAnimation_speed(int speed);
 #endif
+
 #endif

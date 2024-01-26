@@ -500,7 +500,7 @@ static int jpeg_save(const char * filename, int ox, int oy, unsigned char *pic_b
 	cinfo.err = jpeg_std_error(&jerr);
 	jpeg_create_compress(&cinfo);
 
-	eDebug("[ePicLoad] save Thumbnail... %s",filename);
+	// eDebug("[ePicLoad] save Thumbnail... %s",filename);
 
 	jpeg_stdio_dest(&cinfo, outfile);
 

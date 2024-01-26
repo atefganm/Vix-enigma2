@@ -86,6 +86,8 @@ static void adjustBlitThreshold(unsigned int cputime, int area)
 #endif
 #endif
 
+#define ALPHA_TEST_MASK 0xFF000000
+
 gLookup::gLookup()
 	:size(0), lookup(0)
 {
@@ -781,7 +783,7 @@ void gPixmap::blit(const gPixmap &src, const eRect &_pos, const gRegion &clip, i
 				for (int y = area.height(); y != 0; --y)
 				{
 					// no real alphatest yet
-					int width=area.width();
+					int width = area.width();
 					uint8_t *s = srcptr;
 					uint8_t *d = dstptr;
 					// use duff's device here!

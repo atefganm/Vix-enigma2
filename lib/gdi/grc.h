@@ -222,7 +222,7 @@ struct gOpcode
 #define MAXSIZE 2048
 
 /* gRC is the singleton which controls the fifo and dispatches commands */
-class gRC : public iObject, public sigc::trackable
+class gRC: public iObject, public sigc::trackable
 {
 	DECLARE_REF(gRC);
 	friend class gPainter;
@@ -385,9 +385,10 @@ public:
 #endif
 };
 
-class gDC : public iObject
+class gDC: public iObject
 {
 	DECLARE_REF(gDC);
+
 protected:
 	ePtr<gPixmap> m_pixmap;
 
